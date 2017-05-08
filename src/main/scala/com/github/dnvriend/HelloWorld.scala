@@ -25,6 +25,7 @@ import akka.util.Timeout
 
 import scala.compat.Platform
 import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 case class Person(name: String, age: Int)
@@ -96,7 +97,6 @@ class PersonActor(override val persistenceId: String)(implicit ec: ExecutionCont
 
 object HelloWorld extends App {
   implicit val system: ActorSystem = ActorSystem()
-  implicit val ec: ExecutionContext = system.dispatcher
   implicit val timeout: Timeout = 1.second
 
   val personId: String = UUID.randomUUID().toString

@@ -1,4 +1,4 @@
-name := "akka-persistence-inmemory-test"
+name := "akka-persistence-jdbc-test"
 
 organization := "com.github.dnvriend"
 
