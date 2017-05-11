@@ -24,7 +24,7 @@ import akka.persistence._
 import akka.util.Timeout
 
 import scala.compat.Platform
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -97,10 +97,22 @@ class PersonActor(override val persistenceId: String)(implicit ec: ExecutionCont
 
 object HelloWorld extends App {
   implicit val system: ActorSystem = ActorSystem()
-  implicit val timeout: Timeout = 1.second
+  implicit val timeout: Timeout = 1.hour
 
   val personId: String = UUID.randomUUID().toString
   val ref: ActorRef = system.actorOf(Props(new PersonActor(personId)), personId)
+
+  def neverStop = Future.never
+
+  def createActorAndSendCommand(id: Int): Future[Unit] = for {
+    _ <- Future.unit
+    ref = system.actorOf(Props(new PersonActor(id.toString)))
+    _ <- ref ? CreatePerson(s"foo-$id", id)
+    _ <- ref ? Terminate
+  } yield ()
+
+  def createBunchOfActors: Future[Unit] =
+    Future.sequence(100 to 1000 map createActorAndSendCommand) map (_ => ())
 
   val f = (for {
     startState <- (ref ? GetState).mapTo[Option[Person]]
@@ -112,6 +124,8 @@ object HelloWorld extends App {
     recoveredState <- (ref2 ? GetState).mapTo[Option[Person]]
     _ = require(recoveredState.nonEmpty, "Recovered should be nonEmpty")
     _ = require(recoveredState.contains(Person("foo", 42)), "RecoveredState contain a recovered Person")
+    _ <- createBunchOfActors
+    _ <- neverStop
     _ <- system.terminate
   } yield ()).recoverWith {
     case t: Throwable =>
